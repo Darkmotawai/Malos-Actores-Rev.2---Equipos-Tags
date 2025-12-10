@@ -84,6 +84,7 @@ solomon_df['Fecha caida'] = pd.to_datetime(solomon_df['Fecha caida'], errors='co
 
 sap_df.rename(columns={
     'TAG': 'TAG_SAP',
+    'Equipo': 'EQUIPO',
     'Costes tot.reales': 'Coste',
     'Trabajo real': 'Horas',
     'Indicador ABC': 'ABC',
@@ -92,6 +93,7 @@ sap_df.rename(columns={
 
 solomon_df.rename(columns={
     'TAG': 'TAG_SOLOMON',
+    'Equipo': 'EQUIPO',
     'Costos': 'Costos',
     'Dias det': 'Dias',
     'Fecha caida': 'Fecha'
@@ -106,17 +108,17 @@ def calculate_criteria(selected_year, selected_month):
     sap_filtered = sap_df[(sap_df['Fecha'] >= start_date) & (sap_df['Fecha'] < end_date)]
     solomon_filtered = solomon_df[(solomon_df['Fecha'] >= start_date) & (solomon_df['Fecha'] < end_date)]
 
-    all_tags = pd.Series(pd.concat([sap_filtered['TAG_SAP'], solomon_filtered['TAG_SOLOMON']]).dropna().unique(), name='TAG')
-    tag_df = pd.DataFrame(all_tags)
+    all_equipment = pd.Series(pd.concat([sap_filtered['EQUIPO'], solomon_filtered['EQUIPO']]).dropna().unique(), name='EQUIPO')
+    equipment_df = pd.DataFrame(all_equipment)
 
-    ff = sap_filtered.groupby('TAG_SAP').size().rename("FF")
-    cos = sap_filtered.groupby('TAG_SAP')['Coste'].sum().rename("COS")
-    hh = sap_filtered.groupby('TAG_SAP')['Horas'].mean().rename("HH")
-    cri = sap_filtered.sort_values('Fecha').groupby('TAG_SAP')['ABC'].last().rename("CRI")
-    cd = solomon_filtered.groupby('TAG_SOLOMON')['Costos'].sum().rename("CD")
-    dd = solomon_filtered.groupby('TAG_SOLOMON')['Dias'].sum().rename("DD")
-    
-    merged = tag_df.set_index('TAG').join([ff, cos, hh, cri, cd, dd]).fillna(0).reset_index()
+    ff = sap_filtered.groupby('EQUIPO').size().rename("FF")
+    cos = sap_filtered.groupby('EQUIPO')['Coste'].sum().rename("COS")
+    hh = sap_filtered.groupby('EQUIPO')['Horas'].mean().rename("HH")
+    cri = sap_filtered.sort_values('Fecha').groupby('EQUIPO')['ABC'].last().rename("CRI")
+    cd = solomon_filtered.groupby('EQUIPO')['Costos'].sum().rename("CD")
+    dd = solomon_filtered.groupby('EQUIPO')['Dias'].sum().rename("DD")
+
+    merged = equipment_df.set_index('EQUIPO').join([ff, cos, hh, cri, cd, dd]).fillna(0).reset_index()
     
     kedc_df = read_excel_with_logging("kEDC.xlsx")
     
@@ -138,10 +140,10 @@ def calculate_criteria(selected_year, selected_month):
     total_kedc_per_year = kedc_df.groupby('Año')['kEDC'].sum().rename("Total_kEDC")
     solomon_enriched = solomon_enriched.merge(total_kedc_per_year, on='Año', how='left')
     solomon_enriched['Indisp_pct'] = solomon_enriched['Indisp_ref'] / solomon_enriched['Total_kEDC']
-    indisp_pct_sum = solomon_enriched.groupby('TAG_SOLOMON')['Indisp_pct'].sum().rename('IND')
-    event_count = solomon_filtered.groupby('TAG_SOLOMON').size().rename('Eventos_SOL')
-    
-    merged = merged.set_index('TAG').join([indisp_pct_sum, event_count]).fillna(0).reset_index()
+    indisp_pct_sum = solomon_enriched.groupby('EQUIPO')['Indisp_pct'].sum().rename('IND')
+    event_count = solomon_filtered.groupby('EQUIPO').size().rename('Eventos_SOL')
+
+    merged = merged.set_index('EQUIPO').join([indisp_pct_sum, event_count]).fillna(0).reset_index()
 
     return merged
 
@@ -292,7 +294,7 @@ def edit_subcriteria_popup(criterion):
     tk.Button(popup, text="Guardar", command=save_ranges).pack(pady=10)
 
 COLUMN_LABELS = {
-    "TAG": "ACTIVO",
+    "EQUIPO": "ACTIVO",
     "FF": "FREC. DE FALLA",
     "COS": "COS. DE MTTO",
     "HH": "MTTR",
